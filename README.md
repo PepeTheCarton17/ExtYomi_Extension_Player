@@ -1,3 +1,5 @@
+> **ExtYomi** — convierte extensiones de anime/manga en apps independientes. Proyecto en desarrollo, basado en Nekoyomi (Apache-2.0). Las versiones Preview se publican en [ExtYomi_Extension_Player-Preview](https://github.com/PepeTheCarton17/ExtYomi_Extension_Player-Preview/releases); las estables en [ExtYomi_Extension_Player](https://github.com/PepeTheCarton17/ExtYomi_Extension_Player/releases). Los iconos definitivos de Preview y estable se sustituirán en `app/src/preview/res` y `app/src/main/res`.
+
 <div align="center">
 
 <img src=".github/assets/logo.png" alt="Nekoyomi anime player and manga reader app logo" width="112">

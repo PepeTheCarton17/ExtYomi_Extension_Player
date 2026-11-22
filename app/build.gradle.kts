@@ -17,10 +17,10 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.nekoyomi"
+        applicationId = "com.pepethecarton17.extyomi"
 
-        versionCode = 153
-        versionName = "0.20.6"
+        versionCode = 1
+        versionName = "0.1.0"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
@@ -42,6 +42,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = System.getenv("KEYSTORE_FILE")?.let { file(it) } ?: file("release.p12")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: "extyomi"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+        }
+        create("preview") {
+            storeFile = System.getenv("KEYSTORE_FILE")?.let { file(it) } ?: file("preview.p12")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: "extyomi"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+        }
+    }
+
     buildTypes {
         val debug by getting {
             applicationIdSuffix = ".dev"
@@ -51,6 +66,7 @@ android {
         val release by getting {
             isMinifyEnabled = Config.enableCodeShrink
             isShrinkResources = Config.enableCodeShrink
+            signingConfig = signingConfigs.getByName("release")
 
             proguardFiles("proguard-android-optimize.txt", "proguard-rules.pro")
 
@@ -62,10 +78,9 @@ android {
         create("preview") {
             initWith(release)
 
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = ".preview"
 
-            versionNameSuffix = debug.versionNameSuffix
-            signingConfig = debug.signingConfig
+            signingConfig = signingConfigs.getByName("preview")
 
             matchingFallbacks.addAll(commonMatchingFallbacks)
 
@@ -86,7 +101,7 @@ android {
     }
 
     sourceSets {
-        getByName("preview").res.srcDirs("src/debug/res")
+        getByName("preview").res.srcDirs("src/debug/res", "src/preview/res")
         getByName("benchmark").res.srcDirs("src/debug/res")
     }
 

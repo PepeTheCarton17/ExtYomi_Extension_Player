@@ -12,5 +12,11 @@ build
 # Configuration files
 local.properties
 
+# Signing material (injected by CI from GitHub Secrets)
+*.jks
+*.keystore
+*.p12
+keystore.properties
+
 # macOS specific files
 .DS_Store
