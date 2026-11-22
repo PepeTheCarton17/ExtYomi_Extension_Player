@@ -44,6 +44,7 @@ fun MoreScreen(
     onClickStorage: () -> Unit,
     onClickDataAndStorage: () -> Unit,
     onClickPlayerSettings: () -> Unit,
+    showPlayerSettings: Boolean = true,
     onClickSettings: () -> Unit,
     onClickAbout: () -> Unit,
 ) {
@@ -150,12 +151,14 @@ fun MoreScreen(
                     onPreferenceClick = onClickSettings,
                 )
             }
-            item {
-                TextPreferenceWidget(
-                    title = stringResource(AYMR.strings.label_player_settings),
-                    icon = Icons.Outlined.VideoSettings,
-                    onPreferenceClick = onClickPlayerSettings,
-                )
+            if (showPlayerSettings) {
+                item {
+                    TextPreferenceWidget(
+                        title = stringResource(AYMR.strings.label_player_settings),
+                        icon = Icons.Outlined.VideoSettings,
+                        onPreferenceClick = onClickPlayerSettings,
+                    )
+                }
             }
             item {
                 TextPreferenceWidget(
