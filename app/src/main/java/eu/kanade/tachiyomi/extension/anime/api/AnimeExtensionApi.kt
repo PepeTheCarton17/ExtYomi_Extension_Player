@@ -6,6 +6,8 @@ import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.anime.model.AnimeLoadResult
 import eu.kanade.tachiyomi.extension.anime.util.AnimeExtensionLoader
+import eu.kanade.tachiyomi.extension.api.ExtensionIndexPbDto
+import eu.kanade.tachiyomi.extension.api.decompressIfGzipped
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
@@ -14,6 +16,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.protobuf.ProtoBuf
 import logcat.LogPriority
 import mihon.domain.extensionrepo.anime.interactor.GetAnimeExtensionRepo
 import mihon.domain.extensionrepo.anime.interactor.UpdateAnimeExtensionRepo
@@ -35,6 +38,8 @@ internal class AnimeExtensionApi {
     private val animeExtensionManager: AnimeExtensionManager by injectLazy()
     private val json: Json by injectLazy()
 
+    private val protoBuf = ProtoBuf { ignoreUnknownFields = true }
+
     private val lastExtCheck: Preference<Long> by lazy {
         preferenceStore.getLong("last_ext_check", 0)
     }
@@ -50,7 +55,7 @@ internal class AnimeExtensionApi {
 
     private suspend fun getExtensions(extRepo: ExtensionRepo): List<AnimeExtension.Available> {
         val repoBaseUrl = extRepo.baseUrl
-        return try {
+        val jsonExtensions = try {
             val response = networkService.client
                 .newCall(GET("$repoBaseUrl/index.min.json"))
                 .awaitSuccess()
@@ -61,7 +66,58 @@ internal class AnimeExtensionApi {
                     .toExtensions(repoBaseUrl)
             }
         } catch (e: Throwable) {
-            logcat(LogPriority.ERROR, e) { "Failed to get extensions from $repoBaseUrl" }
+            logcat(LogPriority.DEBUG) { "JSON index unavailable for $repoBaseUrl (${e.message})" }
+            emptyList()
+        }
+        return jsonExtensions.ifEmpty { getProtoBufExtensions(repoBaseUrl) }
+    }
+
+    private suspend fun getProtoBufExtensions(repoBaseUrl: String): List<AnimeExtension.Available> {
+        return try {
+            val response = networkService.client
+                .newCall(GET("$repoBaseUrl/index.pb"))
+                .awaitSuccess()
+            val bytes = response.body!!.source().decompressIfGzipped().use { it.readByteArray() }
+            val index = protoBuf.decodeFromByteArray(ExtensionIndexPbDto.serializer(), bytes)
+            index.extensionList?.extensions.orEmpty().mapNotNull { ext ->
+                val libVersion = ext.extensionLib.toDoubleOrNull()
+                    ?: ext.extensionLib.substringBeforeLast('.').toDoubleOrNull()
+                    ?: return@mapNotNull null
+                if (libVersion < AnimeExtensionLoader.LIB_VERSION_MIN ||
+                    libVersion > AnimeExtensionLoader.LIB_VERSION_MAX
+                ) {
+                    return@mapNotNull null
+                }
+                val apkUrl = ext.resources?.apkUrl.orEmpty()
+                if (apkUrl.isEmpty()) return@mapNotNull null
+
+                AnimeExtension.Available(
+                    name = ext.name.substringAfter("Aniyomi: "),
+                    pkgName = ext.packageName,
+                    versionName = ext.versionName,
+                    versionCode = ext.versionCode,
+                    libVersion = libVersion,
+                    lang = ext.packageName.substringAfterLast("extension.").substringBefore('.'),
+                    isNsfw = ext.contentWarning == ExtensionIndexPbDto.ContentWarning.NSFW ||
+                        ext.contentWarning == ExtensionIndexPbDto.ContentWarning.MIXED,
+                    isTorrent = false,
+                    sources = (ext.sources + ext.animeSources).map { source ->
+                        AnimeExtension.Available.AnimeSource(
+                            id = source.id,
+                            lang = source.language,
+                            name = source.name,
+                            baseUrl = source.homeUrl,
+                        )
+                    },
+                    apkName = apkUrl.substringAfterLast('/'),
+                    iconUrl = ext.resources?.iconUrl?.takeIf { it.isNotEmpty() }
+                        ?: "$repoBaseUrl/icon/${ext.packageName}.png",
+                    repoUrl = repoBaseUrl,
+                    apkUrl = apkUrl,
+                )
+            }
+        } catch (e: Throwable) {
+            logcat(LogPriority.DEBUG) { "Protobuf index unavailable for $repoBaseUrl (${e.message})" }
             emptyList()
         }
     }
@@ -138,7 +194,7 @@ internal class AnimeExtensionApi {
     }
 
     fun getApkUrl(extension: AnimeExtension.Available): String {
-        return "${extension.repoUrl}/apk/${extension.apkName}"
+        return extension.apkUrl ?: "${extension.repoUrl}/apk/${extension.apkName}"
     }
 
     private fun AnimeExtensionJsonObject.extractLibVersion(): Double {

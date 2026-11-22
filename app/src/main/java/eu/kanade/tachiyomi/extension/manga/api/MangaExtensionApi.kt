@@ -3,6 +3,8 @@ package eu.kanade.tachiyomi.extension.manga.api
 import android.content.Context
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.extension.ExtensionUpdateNotifier
+import eu.kanade.tachiyomi.extension.api.ExtensionIndexPbDto
+import eu.kanade.tachiyomi.extension.api.decompressIfGzipped
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
 import eu.kanade.tachiyomi.extension.manga.model.MangaLoadResult
@@ -16,6 +18,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.protobuf.ProtoBuf
 import logcat.LogPriority
 import mihon.domain.extensionrepo.manga.interactor.GetMangaExtensionRepo
 import mihon.domain.extensionrepo.manga.interactor.UpdateMangaExtensionRepo
@@ -40,6 +43,8 @@ internal class MangaExtensionApi {
     private val updateExtensionRepo: UpdateMangaExtensionRepo by injectLazy()
     private val extensionManager: MangaExtensionManager by injectLazy()
     private val json: Json by injectLazy()
+
+    private val protoBuf = ProtoBuf { ignoreUnknownFields = true }
 
     private val lastExtCheck: Preference<Long> by lazy {
         preferenceStore.getLong("last_ext_check", 0)
@@ -76,9 +81,11 @@ internal class MangaExtensionApi {
 
     private suspend fun getExtensions(extRepo: ExtensionRepo): List<MangaExtension.Available> {
         val repoBaseUrl = extRepo.baseUrl
-        // Prefer the newer "tachiyomix 1.6" index format, falling back to the classic one.
+        // Try the newer "tachiyomix 1.6" JSON index, the classic JSON index and finally
+        // the protobuf index used by Keiyoushi/ProjectNox-style repos.
         return getNewFormatExtensions(repoBaseUrl)?.takeIf { it.isNotEmpty() }
-            ?: getClassicExtensions(repoBaseUrl)
+            ?: getClassicExtensions(repoBaseUrl).takeIf { it.isNotEmpty() }
+            ?: getProtoBufExtensions(repoBaseUrl)
     }
 
     private suspend fun getNewFormatExtensions(repoBaseUrl: String): List<MangaExtension.Available>? {
@@ -117,6 +124,63 @@ internal class MangaExtensionApi {
             logcat(LogPriority.ERROR, e) { "Failed to get extensions from $repoBaseUrl" }
             emptyList()
         }
+    }
+
+    private suspend fun getProtoBufExtensions(repoBaseUrl: String): List<MangaExtension.Available> {
+        return try {
+            val response = networkService.client
+                .newCall(GET("$repoBaseUrl/index.pb"))
+                .awaitSuccess()
+            val bytes = response.body!!.source().decompressIfGzipped().use { it.readByteArray() }
+            val index = protoBuf.decodeFromByteArray(ExtensionIndexPbDto.serializer(), bytes)
+            index.extensionList?.extensions.orEmpty().toExtensions(repoBaseUrl)
+        } catch (e: Throwable) {
+            logcat(LogPriority.DEBUG) { "Protobuf index unavailable for $repoBaseUrl (${e.message})" }
+            emptyList()
+        }
+    }
+
+    private fun List<ExtensionIndexPbDto.Extension>.toExtensions(
+        repoUrl: String,
+    ): List<MangaExtension.Available> {
+        return mapNotNull { ext ->
+            val libVersion = parseLibVersion(ext.extensionLib) ?: return@mapNotNull null
+            if (libVersion < MangaExtensionLoader.LIB_VERSION_MIN ||
+                libVersion > MangaExtensionLoader.LIB_VERSION_MAX
+            ) {
+                return@mapNotNull null
+            }
+            val apkUrl = ext.resources?.apkUrl.orEmpty()
+            if (apkUrl.isEmpty()) return@mapNotNull null
+
+            MangaExtension.Available(
+                name = ext.name.substringAfter("Tachiyomi: "),
+                pkgName = ext.packageName,
+                versionName = ext.versionName,
+                versionCode = ext.versionCode,
+                libVersion = libVersion,
+                lang = ext.packageName.substringAfterLast("extension.").substringBefore('.'),
+                isNsfw = ext.contentWarning == ExtensionIndexPbDto.ContentWarning.NSFW ||
+                    ext.contentWarning == ExtensionIndexPbDto.ContentWarning.MIXED,
+                sources = ext.sources.map { source ->
+                    MangaExtension.Available.MangaSource(
+                        id = source.id,
+                        lang = source.language,
+                        name = source.name,
+                        baseUrl = source.homeUrl,
+                    )
+                },
+                apkName = apkUrl.substringAfterLast('/'),
+                iconUrl = ext.resources?.iconUrl?.takeIf { it.isNotEmpty() }
+                    ?: "$repoUrl/icon/${ext.packageName}.png",
+                repoUrl = repoUrl,
+                apkUrl = rewriteJsDelivrToRaw(apkUrl),
+            )
+        }
+    }
+
+    private fun parseLibVersion(value: String): Double? {
+        return value.toDoubleOrNull() ?: value.substringBeforeLast('.').toDoubleOrNull()
     }
 
     suspend fun checkForUpdates(
