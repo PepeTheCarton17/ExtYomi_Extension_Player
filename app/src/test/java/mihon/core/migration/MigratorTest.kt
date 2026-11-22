@@ -45,7 +45,8 @@ class MigratorTest {
 
         verify { migrationJobFactory.create(capture(migrations)) }
         assertEquals(1, migrations.captured.size)
-        verify { migrationCompletedListener() }
+        // The listener runs in a separate coroutine after the migration chain completes.
+        verify(timeout = 1000) { migrationCompletedListener() }
     }
 
     @Test
@@ -86,7 +87,8 @@ class MigratorTest {
 
         verify { migrationJobFactory.create(capture(migrations)) }
         assertEquals(2, migrations.captured.size)
-        verify { migrationCompletedListener() }
+        // The listener runs in a separate coroutine after the migration chain completes.
+        verify(timeout = 1000) { migrationCompletedListener() }
     }
 
     @Test
@@ -114,7 +116,8 @@ class MigratorTest {
 
         verify { migrationJobFactory.create(capture(migrations)) }
         assertEquals(10, migrations.captured.size)
-        verify { migrationCompletedListener() }
+        // The listener runs in a separate coroutine after the migration chain completes.
+        verify(timeout = 1000) { migrationCompletedListener() }
     }
 
     @Test
@@ -135,7 +138,8 @@ class MigratorTest {
 
         verify { migrationJobFactory.create(capture(migrations)) }
         assertEquals(2, migrations.captured.size)
-        verify { migrationCompletedListener() }
+        // The listener runs in a separate coroutine after the migration chain completes.
+        verify(timeout = 1000) { migrationCompletedListener() }
     }
 
     companion object {
