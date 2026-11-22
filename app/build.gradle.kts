@@ -101,7 +101,7 @@ android {
     }
 
     sourceSets {
-        getByName("preview").res.srcDirs("src/debug/res", "src/preview/res")
+        getByName("preview").res.srcDirs("src/preview/res")
         getByName("benchmark").res.srcDirs("src/debug/res")
     }
 
