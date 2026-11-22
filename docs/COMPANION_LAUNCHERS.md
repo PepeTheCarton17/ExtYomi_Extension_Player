@@ -29,6 +29,20 @@ Este es el punto de entrada que usarán los APK lanzador generados en el disposi
    `java.nio.file` ni BouncyCastle, por lo que es prometedor) y que el keystore puede
    generarse/guardarse con Android Keystore.
 
+## Resultado del spike de `apksig` (JVM)
+
+- Artefacto usable: `com.android.tools.build:apksig:8.9.1`, disponible en el repositorio
+  Maven de Google (`https://dl.google.com/dl/android/maven2/...`); Maven Central solo
+  publica la versión 2.3.0.
+- El JAR no referencia `java.nio.file` ni BouncyCastle; usa `java.security` y
+  `java.util.zip`, ambos disponibles en Android.
+- Prueba realizada: se firmó un APK Preview real (78 MB) con un keystore PKCS12
+  provisional usando `ApkSigner.SignerConfig.Builder` + `ApkSigner.Builder`
+  (V1/V2/V3, `minSdkVersion=23`). Salida correcta y verificada con
+  `apksigner verify --print-certs` (exit 0, huella SHA-256 del certificado de prueba).
+- Queda pendiente repetir la prueba dentro de un proceso Android (ART), donde
+  `java.security.KeyStore` puede estar respaldado por Android Keystore.
+
 ## Notas de seguridad
 
 - No se redistribuyen APKs de terceros: el companion es un lanzador propio.
