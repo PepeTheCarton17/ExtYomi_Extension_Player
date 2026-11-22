@@ -39,6 +39,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.icerock.moko.resources.StringResource
+import eu.kanade.domain.ui.CompanionScope
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.more.settings.screen.about.AboutScreen
@@ -250,5 +251,15 @@ object SettingsMainScreen : Screen() {
                 icon = Icons.Outlined.Info,
                 screen = AboutScreen,
             ),
-        )
+        ).filterNot { item ->
+            // A companion exposes only the settings relevant to its content kind.
+            (
+                CompanionScope.appliesTo(CompanionScope.KIND_ANIME) &&
+                    item.screen === SettingsReaderScreen
+                ) ||
+                (
+                    CompanionScope.appliesTo(CompanionScope.KIND_MANGA) &&
+                        item.screen is PlayerSettingsScreen
+                    )
+        }
 }

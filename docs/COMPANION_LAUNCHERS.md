@@ -17,14 +17,15 @@ que abra directamente el catálogo de esa extensión y mantenga Home/Biblioteca/
   `sourceId`. Al no haber alcance activo el comportamiento es el normal.
 - En modo companion, Home muestra solo la pestaña del tipo de contenido correspondiente y More
   (ajustes); las demás pestañas siguen disponibles desde More mientras se termina el aislamiento.
+- Ajustes oculta el lector cuando el companion es de anime y el reproductor cuando es de manga.
 
 Este es el punto de entrada que usarán los APK lanzador generados en el dispositivo.
 
 ## Pendiente
 
-1. **Aislamiento de Home y Ajustes**: quitar las pestañas ajenas también de More y adaptar Ajustes
-   según `kind` (anime → reproductor, manga → visor). El host ya abre directamente el catálogo de
-   la extensión, filtra Biblioteca/Historial y reduce las pestañas de Home.
+1. **Aislamiento total de Home**: quitar las pestañas ajenas también del menú More. El host ya
+   abre directamente el catálogo de la extensión, filtra Biblioteca/Historial, reduce las pestañas
+   de Home y adapta Ajustes según `kind`.
 2. **Plantilla de lanzador**: módulo Android mínimo con una actividad que lee `sourceId`/`kind`
    y lanza la acción indicada contra el paquete del host (`com.pepethecarton17.extyomi` o
    `...preview`).
