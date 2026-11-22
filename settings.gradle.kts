@@ -46,6 +46,7 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 rootProject.name = "ExtYomi"
 include(":app")
+include(":flexible-adapter")
 include(":core-metadata")
 include(":core:archive")
 include(":core:common")
