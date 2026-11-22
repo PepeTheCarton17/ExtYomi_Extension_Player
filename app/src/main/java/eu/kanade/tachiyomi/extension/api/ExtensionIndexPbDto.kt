@@ -60,6 +60,8 @@ data class ExtensionIndexPbDto(
     data class Resources(
         @ProtoNumber(1) val apkUrl: String = "",
         @ProtoNumber(2) val iconUrl: String = "",
+        // Extra fields from newer repos are ignored by kotlinx protobuf; declare the common one.
+        @ProtoNumber(501) val jarUrl: String = "",
     )
 
     @Serializable
