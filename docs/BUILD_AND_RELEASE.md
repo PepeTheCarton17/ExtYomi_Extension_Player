@@ -30,10 +30,12 @@ El workflow decodifica el keystore en `$RUNNER_TEMP` y lo pasa a Gradle mediante
 
 ## Iconos
 
-- Estable: recursos en `app/src/main/res/mipmap-*`.
-- Preview: recursos en `app/src/preview/res/mipmap-*` (actualmente copias provisionales del icono "chilling" de Nekoyomi; sustituir por los definitivos).
+- Estable: recursos en `app/src/main/res/mipmap-*` — icono del **mouse con triángulo de play**.
+- Preview: recursos en `app/src/preview/res/mipmap-*` — icono del **símbolo de pausa**.
 - El nombre mostrado se define en `i18n/src/commonMain/moko-resources/base/strings.xml` (`ExtYomi`) y se sobrescribe para Preview en `app/src/preview/res/values/strings.xml` (`ExtYomi Preview`).
 
 ## CI
 
 `.github/workflows/build_push.yml` es solo verificación: `spotlessCheck`, `assembleDebug` y tests unitarios. Los builds firmados y los releases los hacen `preview.yml` y `stable.yml`.
+
+`flexible-adapter/` es una copia local (Apache-2.0) del módulo usado por Nekoyomi: el fork de JitPack ya no se puede compilar. Ver `flexible-adapter/README.md`.

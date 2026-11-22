@@ -2,6 +2,11 @@ name: ExtYomi Stable
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publicar el release después de compilar'
+        type: boolean
+        default: true
   push:
     tags: ['v*']
 
@@ -46,6 +51,7 @@ jobs:
           sha256sum *.apk > checksums.txt
 
       - name: Publish to Releases
+        if: github.event_name == 'push' || inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
