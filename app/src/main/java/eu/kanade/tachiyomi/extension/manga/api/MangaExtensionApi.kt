@@ -133,14 +133,14 @@ internal class MangaExtensionApi {
                 .awaitSuccess()
             val bytes = response.body!!.source().decompressIfGzipped().use { it.readByteArray() }
             val index = protoBuf.decodeFromByteArray(ExtensionIndexPbDto.serializer(), bytes)
-            index.extensionList?.extensions.orEmpty().toExtensions(repoBaseUrl)
+            index.extensionList?.extensions.orEmpty().toMangaExtensionsFromPb(repoBaseUrl)
         } catch (e: Throwable) {
             logcat(LogPriority.DEBUG) { "Protobuf index unavailable for $repoBaseUrl (${e.message})" }
             emptyList()
         }
     }
 
-    private fun List<ExtensionIndexPbDto.Extension>.toExtensions(
+    private fun List<ExtensionIndexPbDto.Extension>.toMangaExtensionsFromPb(
         repoUrl: String,
     ): List<MangaExtension.Available> {
         return mapNotNull { ext ->
