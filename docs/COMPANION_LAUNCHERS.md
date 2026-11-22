@@ -11,14 +11,18 @@ que abra directamente el catálogo de esa extensión y mantenga Home/Biblioteca/
 - Al recibirla, el host vuelve a la raíz y abre `BrowseAnimeSourceScreen(sourceId, null)` o
   `BrowseMangaSourceScreen(sourceId, null)`.
 - Funciona tanto en arranque frío como con la app ya abierta (`onNewIntent`).
+- Al recibir la acción se persiste el alcance en `UiPreferences` (`companion_source_id`,
+  `companion_kind`), gestionado por `CompanionScope`.
+- Biblioteca e Historial (anime y manga/novela) filtran sus listados y chips de género por ese
+  `sourceId`. Al no haber alcance activo el comportamiento es el normal.
 
 Este es el punto de entrada que usarán los APK lanzador generados en el dispositivo.
 
 ## Pendiente
 
-1. **Aislamiento real por extensión**: modo companion con `sourceId` persistido, filtrando
-   Biblioteca e Historial y ocultando pestañas ajenas en Home; ajustes contextuales según
-   `kind` (anime → reproductor, manga → visor).
+1. **Aislamiento de Home y Ajustes**: ocultar pestañas ajenas en Home y adaptar Ajustes según
+   `kind` (anime → reproductor, manga → visor). Provisionalmente el host abre directamente el
+   catálogo de la extensión y filtra Biblioteca/Historial.
 2. **Plantilla de lanzador**: módulo Android mínimo con una actividad que lee `sourceId`/`kind`
    y lanza la acción indicada contra el paquete del host (`com.pepethecarton17.extyomi` o
    `...preview`).
@@ -42,6 +46,27 @@ Este es el punto de entrada que usarán los APK lanzador generados en el disposi
   `apksigner verify --print-certs` (exit 0, huella SHA-256 del certificado de prueba).
 - Queda pendiente repetir la prueba dentro de un proceso Android (ART), donde
   `java.security.KeyStore` puede estar respaldado por Android Keystore.
+
+## Diseño del generador (API verificada)
+
+Plantilla: módulo Android mínimo `companion-launcher` con una sola actividad lanzadora.
+El host la incluye como plantilla y la transforma en el dispositivo:
+
+1. Cargar la plantilla con `ApkModule` (ARSCLib).
+2. Configuración: añadir `assets/companion-config.json` con `sourceId`, `kind`,
+   paquete del host y versión. Es más simple y robusto que parchear `<meta-data>`.
+3. Identidad: `ApkModule.setPackageName(packageName)` (actualiza manifiesto y tabla
+   de recursos), `manifest.setApplicationLabel(label)` y reemplazo de los archivos
+   `res/mipmap-*/ic_launcher*.png` por el icono elegido conservando el alias.
+4. Escritura: `ApkModule.writeApk(File)` en un archivo temporal privado.
+5. Firma: `ApkSigner` con el keystore PKCS12 generado en el dispositivo
+   (V1/V2/V3, `minSdkVersion` leído del manifiesto de la plantilla).
+6. Copiar el APK firmado al `OutputStream` de la carpeta SAF elegida.
+7. Instalar con `PackageInstaller` + `setRequireUserAction(USER_ACTION_REQUIRED)`.
+
+ARSCLib declara compatibilidad con Android y Apache-2.0; sus setters de manifiesto
+(`setPackageName`, `setApplicationLabel`, `setIconResourceId`) están confirmados en
+`AndroidManifestBlock`.
 
 ## Notas de seguridad
 

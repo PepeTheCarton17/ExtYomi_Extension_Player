@@ -61,6 +61,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.source.anime.interactor.GetAnimeIncognitoState
 import eu.kanade.domain.source.manga.interactor.GetMangaIncognitoState
+import eu.kanade.domain.ui.CompanionScope
 import eu.kanade.presentation.components.AppStateBanners
 import eu.kanade.presentation.components.DownloadedOnlyBannerBackgroundColor
 import eu.kanade.presentation.components.IncognitoModeBannerBackgroundColor
@@ -537,9 +538,12 @@ class MainActivity : BaseActivity() {
                 // Used by generated companion launchers to open a single extension directly.
                 val sourceId = intent.getLongExtra(EXTRA_EXTENSION_SOURCE_ID, -1)
                 if (sourceId < 0) return false
+                val kind = intent.getStringExtra(EXTRA_EXTENSION_KIND)
+                    ?: CompanionScope.KIND_ANIME
+                CompanionScope.save(sourceId, kind)
                 navigator.popUntilRoot()
-                when (intent.getStringExtra(EXTRA_EXTENSION_KIND)) {
-                    "manga" -> navigator.push(BrowseMangaSourceScreen(sourceId, null))
+                when (kind) {
+                    CompanionScope.KIND_MANGA -> navigator.push(BrowseMangaSourceScreen(sourceId, null))
                     else -> navigator.push(BrowseAnimeSourceScreen(sourceId, null))
                 }
                 null
